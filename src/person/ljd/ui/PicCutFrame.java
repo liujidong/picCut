@@ -8,7 +8,6 @@ import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 import javax.imageio.ImageIO;
@@ -16,6 +15,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -37,10 +37,11 @@ public class PicCutFrame extends JFrame implements ActionListener{
 	private PaintLabel lblImage = null; 
 	private JSlider jy = null;
 	private JSlider jx	=	null;
-	private JButton btn_line_ok = new JButton("标记切割线");
+	private JButton btn_line_ok = new JButton("标记线确定");
 	private JButton btn_cut	=	new JButton("切割");
+	private JButton btn_clear = new JButton("清空");
 	private String imgPath;
-	
+	BufferedImage image;
 	public PicCutFrame() {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);	
 		//---------------ui-------------------------------
@@ -58,15 +59,16 @@ public class PicCutFrame extends JFrame implements ActionListener{
 		jp_east.setLayout(new GridLayout(4, 1));
 		jp_east.add(btn_line_ok);
 		jp_east.add(btn_cut);
-		//jp_east.add(new JLabel(softInfo()));
+		jp_east.add(btn_clear);
+		jp_east.add(new JLabel(softInfo()));
 		c.add(BorderLayout.EAST,jp_east);
 		//--------------event-------------------------------------
 		btnOpen.addActionListener(this);
 		btn_line_ok.addActionListener(this);
 		btn_cut.addActionListener(this);
+		btn_clear.addActionListener(this);
 		
-		new DropTarget(c,
-		         new DropImgListener(this));
+		new DropTarget(c,new DropImgListener(this));
 		//pack();
 		setSize(1000,720);
 	}
@@ -77,7 +79,7 @@ public class PicCutFrame extends JFrame implements ActionListener{
 		infoHtml.append("<ul>\n");
 		infoHtml.append("<li>liujidong2010@gmail.com</li>\n");
 		infoHtml.append("<li>制作：刘继东</li>\n");
-		infoHtml.append("<li>日期：2014-11-27</li>\n");
+		infoHtml.append("<li>日期：2016-2</li>\n");
 		infoHtml.append("</ul>\n");
 		infoHtml.append("</html>\n");
 		return infoHtml.toString();
@@ -90,8 +92,8 @@ public class PicCutFrame extends JFrame implements ActionListener{
 		this.imgPath = imgPath;
 		try {
 			//-------------------ui-----------------------
-			BufferedImage image = ImageIO.read(new File(imgPath));
-			//int theWidth=image.getWidth();
+			image = ImageIO.read(new File(imgPath));
+			int theWidth=image.getWidth();
 			int theHeigh=image.getHeight();
 			lblImage = new PaintLabel(new ImageIcon(imgPath)); 
 			lblImage.setOpaque(false);
@@ -100,14 +102,16 @@ public class PicCutFrame extends JFrame implements ActionListener{
 			getContentPane().add(BorderLayout.CENTER,scroll_img);
 			//构建拖动条
 			jy = new  JSlider(JSlider.VERTICAL,0,theHeigh,0);
+			//则反转滑块显示的值范围
 			jy.setInverted(true);
 			//jy.setPreferredSize(new Dimension(20, theHeigh));
 			JScrollPane scroll_slider = new JScrollPane(jy);
 			getContentPane().add(BorderLayout.WEST,scroll_slider);
-			//jx	=	new JSlider(JSlider.HORIZONTAL, 10, 1000,10);
-			//f.getContentPane().add(BorderLayout.NORTH,jx);
+			jx	=	new JSlider(JSlider.HORIZONTAL, 0, theWidth,0);
+			getContentPane().add(BorderLayout.SOUTH,jx);
 			//-------------------event---------------------------
 			jy.addChangeListener(new ChangeY());
+			jx.addChangeListener(new ChangeX());
 			
 			this.validate();
 		} catch (IOException e1) {
@@ -126,24 +130,20 @@ public class PicCutFrame extends JFrame implements ActionListener{
 			}
 		}
 		else if(source==btn_line_ok){
-			lblImage.addLs_y();
-			//System.out.println("ypos:"+lblImage.getYpos());
-		}else if(source==btn_cut){
-			List<Integer> ls_y = lblImage.getLs_y();
-			if(ls_y.size()>0){
-				ls_y.add(0);
-				Collections.sort(ls_y);
-				for(int i=0;i<ls_y.size()-1;i++){
-					int destHeight	=	ls_y.get(i+1)-ls_y.get(i);
-					System.out.println("y:"+ls_y.get(i)+" height:"+destHeight);
-					ImageCut.abscut(imgPath, ls_y.get(i), destHeight, i);
-				}
-				//last one
-				int index_last = ls_y.size()-1;
-				System.out.println("lastone:y:"+ls_y.get(index_last)+" height:-1");
-				ImageCut.abscut(imgPath, ls_y.get(index_last), -1, index_last);
-				JOptionPane.showMessageDialog(null, "操作成功！");
-			}
+			lblImage.addYpos();
+			lblImage.addXpos();
+		}else if(source == btn_clear){
+			lblImage.clearLs();
+		}
+		else if(source==btn_cut){
+			List<Integer> lsY = lblImage.getLsY();
+			List<Integer> lsX = lblImage.getLsX();
+	    		lsX.add(0);
+	    		lsX.add(image.getWidth());
+	    		lsY.add(0);
+	    		lsY.add(image.getHeight());
+			ImageCut.abscutBatch(imgPath, lsX, lsY);
+			JOptionPane.showMessageDialog(null, "操作成功！");
 		}
 	}
 
@@ -152,5 +152,9 @@ public class PicCutFrame extends JFrame implements ActionListener{
 			lblImage.setYpos(((JSlider)e.getSource()).getValue());
 		}
 	}	
-
+	class ChangeX implements ChangeListener{
+		public void stateChanged(ChangeEvent e){
+			lblImage.setXpos(((JSlider)e.getSource()).getValue());
+		}
+	}
 }
